@@ -1,6 +1,7 @@
 import json
-from sys import argv, stdout
+from sys import argv, stdin, stdout
 from codecs import getreader, getwriter
+import re
 import logging
 
 logging.basicConfig(format='[%(asctime)s] %(levelname)s: %(message)s')
@@ -11,6 +12,8 @@ logger.setLevel('INFO')
 class CommentTreeNode(object):
     def __init__(self, in_id, in_body):
         self.body = in_body
+        if self.body:
+            self.body = re.sub('\s', ' ', self.body.strip().lower())
         self.children = []
         self.node_id = in_id
 
@@ -29,11 +32,11 @@ def get_comment_chains(in_root_node):
             yield own_content + child_chain
 
 
-def build_comment_chains(in_file_name):
+def build_comment_chains(in_stream):
     document_root = CommentTreeNode(0, None)
     all_nodes = {}
 
-    with getreader('utf-8')(open(in_file_name)) as reddit_in:
+    with getreader('utf-8')(in_stream) as reddit_in:
         for line in reddit_in:
             comment_json = json.loads(line)
             comment_id, parent_id, body = (
@@ -57,13 +60,15 @@ def build_comment_chains(in_file_name):
 
 
 if __name__ == '__main__':
-    if len(argv) < 2:
-        print 'Usage: extract_conversations.py <input filename>'
+    if len(argv) == 2 and argv[1] == '--help':
+        print 'Usage: extract_conversations.py < <input filename> > <output_filename>'
         exit()
-    comments_tree_root = build_comment_chains(argv[1])
+    comments_tree_root = build_comment_chains(stdin)
 
     with getwriter('utf-8')(stdout) as OUTPUT_WRITER:
         for comment_chain in get_comment_chains(comments_tree_root):
             print >>OUTPUT_WRITER, u'\n'.join(
                 ['\t'.join(node_content) for node_content in comment_chain]
             )
+            print >>OUTPUT_WRITER, ''
+
