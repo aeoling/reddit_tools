@@ -1,5 +1,5 @@
 import json
-from sys import argv, stdin, stdout
+from sys import argv, stdin, stdout, stderr
 from codecs import getreader, getwriter
 import re
 import logging
@@ -66,9 +66,12 @@ if __name__ == '__main__':
     comments_tree_root = build_comment_chains(stdin)
 
     with getwriter('utf-8')(stdout) as OUTPUT_WRITER:
+        stats = 0
         for comment_chain in get_comment_chains(comments_tree_root):
             print >>OUTPUT_WRITER, u'\n'.join(
                 ['\t'.join(node_content) for node_content in comment_chain]
             )
             print >>OUTPUT_WRITER, ''
-
+            stats += 1
+    print >>stderr, '#extracted conversation chains:'
+    print >>stderr, stats
