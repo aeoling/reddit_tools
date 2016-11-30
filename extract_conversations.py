@@ -16,6 +16,8 @@ def main(in_file_name):
                 conversation_roots[comment_id] = comment_id
             else:
                 parent_id = parent_id.partition('_')[2]
+                if not parent_id in conversation_roots:
+                    continue
                 conversation_roots[comment_id] = conversation_roots[parent_id]
                 comment_ids[conversation_roots[comment_id]].append(comment_id)
     return comment_ids
