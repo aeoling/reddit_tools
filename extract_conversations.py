@@ -14,17 +14,17 @@ class CommentTreeNode(object):
         self.children = []
         self.node_id = in_id
 
-    def adopt_node(self, in_node):
+    def adopt_child(self, in_node):
         self.children.append(in_node)
 
 
 def get_comment_chains(in_root_node):
     own_content = [] \
         if in_root_node.node_id == 0 \
-        else (in_root_node.node_id, in_root_node.body)
+        else [(in_root_node.node_id, in_root_node.body)]
     if not len(in_root_node.children):
         yield own_content
-    for child in in_root_node:
+    for child in in_root_node.children:
         for child_chain in get_comment_chains(child):
             yield own_content + child_chain
 
@@ -44,7 +44,14 @@ def build_comment_chains(in_file_name):
             parent_id = parent_id.partition('_')[2] if parent_id else None
             comment_node = CommentTreeNode(comment_id, body)
             all_nodes[comment_id] = comment_node
-            parent_node = all_nodes[parent_id] if parent_id else document_root
+            if not parent_id:
+                parent_node = document_root
+            elif not parent_id in all_nodes:
+                parent_node = CommentTreeNode(parent_id, '__CONTENT_MISSING__')
+                document_root.adopt_child(parent_node)
+                all_nodes[parent_id] = parent_node
+            else:
+                parent_node = all_nodes[parent_id]
             parent_node.adopt_child(comment_node)
     return document_root
 
