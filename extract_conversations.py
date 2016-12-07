@@ -4,6 +4,8 @@ from codecs import getreader, getwriter
 import re
 import logging
 
+from utils import DIALOGUE_SEPARATOR
+
 logging.basicConfig(format='[%(asctime)s] %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
@@ -21,15 +23,19 @@ class CommentTreeNode(object):
         self.children.append(in_node)
 
 
-def get_comment_chains(in_root_node):
+def write_comment_chains(in_root_node, in_output_stream, in_previous_context=[]):
     own_content = [] \
         if in_root_node.node_id == 0 \
         else [(in_root_node.node_id, in_root_node.body)]
+    comment_chain = in_previous_context + own_content
     if not len(in_root_node.children):
-        yield own_content
+        print >>in_output_stream, u'\n'.join([
+            '\t'.join(node_content)
+            for node_content in comment_chain
+        ])
+        print >>in_output_stream, DIALOGUE_SEPARATOR 
     for child in in_root_node.children:
-        for child_chain in get_comment_chains(child):
-            yield own_content + child_chain
+        write_comment_chains(child, in_output_stream, comment_chain)
 
 
 def build_comment_chains(in_stream):
@@ -67,11 +73,5 @@ if __name__ == '__main__':
 
     with getwriter('utf-8')(stdout) as OUTPUT_WRITER:
         stats = 0
-        for comment_chain in get_comment_chains(comments_tree_root):
-            print >>OUTPUT_WRITER, u'\n'.join(
-                ['\t'.join(node_content) for node_content in comment_chain]
-            )
-            print >>OUTPUT_WRITER, ''
-            stats += 1
-    print >>stderr, '#extracted conversation chains:'
-    print >>stderr, stats
+        write_comment_chains(comments_tree_root, OUTPUT_WRITER)
+

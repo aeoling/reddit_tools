@@ -36,7 +36,7 @@ def collect_dialogues(in_src_root):
         for filename in files:
             full_filename = os.path.join(root, filename)
             with getreader('utf-8')(open(full_filename)) as reddit_in:
-                dialogues = reddit_in.split(DIALOGUE_SEPARATOR)
+                dialogues = reddit_in.read().split(DIALOGUE_SEPARATOR)
                 dialogues = [dialogue.split('\n') for dialogue in dialogues]
                 dialogues_filtered = []
                 for dialogue in dialogues:
@@ -50,6 +50,8 @@ def collect_dialogues(in_src_root):
 
 
 def main(in_src_root, in_result_root, in_context_length, in_testset_ratio):
+    if not os.path.exists(in_result_root):
+        os.makedirs(in_result_root)
     dialogues = collect_dialogues(in_src_root)
     test_set_size = int(len(dialogues) * in_testset_ratio)
     train_set, test_set = dialogues[:-test_set_size], dialogues[-test_set_size:]
@@ -83,4 +85,9 @@ if __name__ == '__main__':
     parser = build_argument_parser()
     args = parser.parse_args()
 
-    main(args.src_root, args.result_root, args.context_length)
+    main(
+        args.src_root,
+        args.result_root,
+        args.context_length,
+        args.testset_ratio
+    )

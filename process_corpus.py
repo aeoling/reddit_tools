@@ -1,10 +1,11 @@
 from os import path, walk
 import logging
 from argparse import ArgumentParser
+from codecs import getreader, getwriter
 
 from task_list import add_task, execute_tasks, tasks
 from filter_size import getSubreddits
-from extract_conversations import get_comment_chains, build_comment_chains
+from extract_conversations import write_comment_chains, build_comment_chains
 from utils import DIALOGUE_SEPARATOR
 
 DEFAULT_TASKS_NUMBER = 64
@@ -14,41 +15,30 @@ logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
 
 
-def filter_file_callback(in_params):
-    try:
-        input_file, output_file, max_len = in_params
-        logger.info('Processing file {}'.format(input_file))
-        with open(input_file) as reddit_in, open(output_file, 'w') as reddit_out:
-            getSubreddits(reddit_in, reddit_out)
-        return 0
-    except:
-        return 1
+def filter_callback(in_params):
+    input_file, output_file, max_len = in_params
+    logger.info('Processing file {}'.format(input_file))
+    with open(input_file) as reddit_in, open(output_file, 'w') as reddit_out:
+        getSubreddits(reddit_in, reddit_out)
 
 
-def build_chains_callback(in_params):
-    try:
-        input_file, output_file = in_params
-        logger.info('Processing file {}'.format(input_file))
-        with open(input_file) as reddit_in, open(output_file, 'w') as reddit_out:
+def chain_callback(in_params):
+    input_file, output_file = in_params
+    logger.info('Processing file {}'.format(input_file))
+    with getreader('utf-8')(open(input_file)) as reddit_in:
+        with getwriter('utf-8')(open(output_file, 'w')) as reddit_out:
             comments_tree_root = build_comment_chains(reddit_in)
-            for comment_chain in get_comment_chains(comments_tree_root):
-                print >>reddit_out, u'\n'.join(
-                    ['\t'.join(node_content) for node_content in comment_chain]
-                )
-                print >>reddit_out, DIALOGUE_SEPARATOR
-        return 0
-    except:
-        return 1
+            write_comment_chains(comments_tree_root, reddit_out)
 
 
-def collect_tasks(in_src_root, in_dst_root, **kwargs):
+def collect_tasks(in_src_root, in_dst_root):
     for root, dirs, files in walk(in_src_root):
         for filename in files:
             if not filename.startswith('RC'):
                 continue
             full_filename = path.join(root, filename)
             result_filename = path.join(in_dst_root, filename)
-            add_task((full_filename, result_filename, kwargs))
+            add_task((full_filename, result_filename))
 
 
 def build_argument_parser():
@@ -63,15 +53,15 @@ def build_argument_parser():
 def main(in_text_root, in_result_folder, in_callback, in_tasks_number):
     collect_tasks(in_text_root, in_result_folder)
     logger.info('got {} tasks'.format(len(tasks)))
-    if 1< in_tasks_number:
+    if 1 < in_tasks_number:
         retcodes = execute_tasks(in_callback, in_tasks_number)
     else:
         retcodes = [in_callback(task) for task in tasks]
-    assert sum(retcodes) == 0, 'Some tasks failed!'
 
 
 if __name__ == '__main__':
     parser = build_argument_parser()
     args = parser.parse_args()
-    callback = locals()[args.command]
+    callback = locals()[args.command + '_callback']
     main(args.src_root, args.result_root, callback, args.jobs)
+
