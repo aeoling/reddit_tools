@@ -6,7 +6,6 @@ from codecs import getreader, getwriter
 from task_list import add_task, execute_tasks, tasks
 from filter_size import getSubreddits
 from extract_conversations import write_comment_chains, build_comment_chains
-from utils import DIALOGUE_SEPARATOR
 
 DEFAULT_TASKS_NUMBER = 64
 
