@@ -7,7 +7,9 @@ import logging
 from utils import DIALOGUE_SEPARATOR
 
 # comment chaining is implemented via recursion - so likely we'll go really deep
-setrecursionlimit(100000)
+# setrecursionlimit(100000)
+
+MAXIMUM_CHAIN_DEPTH = 100
 
 logging.basicConfig(format='[%(asctime)s] %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
@@ -32,12 +34,17 @@ def write_comment_chains(in_root_node, in_output_stream, in_previous_context=[])
             if in_root_node.node_id == 0 \
             else [(in_root_node.node_id, in_root_node.body)]
         comment_chain = in_previous_context + own_content
-        if not len(in_root_node.children):
+        if (
+            MAXIMUM_CHAIN_DEPTH == len(comment_chain) or
+            not len(in_root_node.children)
+        ):
             print >>in_output_stream, u'\n'.join([
                 '\t'.join(node_content)
                 for node_content in comment_chain
             ])
             print >>in_output_stream, DIALOGUE_SEPARATOR
+        if MAXIMUM_CHAIN_DEPTH == len(comment_chain):
+            return
         for child in in_root_node.children:
             write_comment_chains(child, in_output_stream, comment_chain)
     except RuntimeError as exc:

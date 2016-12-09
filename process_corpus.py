@@ -28,6 +28,7 @@ def chain_callback(in_params):
         with getwriter('utf-8')(open(output_file, 'w')) as reddit_out:
             comments_tree_root = build_comment_chains(reddit_in)
             write_comment_chains(comments_tree_root, reddit_out)
+    logger.info('Done - {}'.format(input_file))
 
 
 def collect_tasks(in_src_root, in_dst_root):
