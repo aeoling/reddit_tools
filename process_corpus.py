@@ -12,7 +12,7 @@ DEFAULT_TASKS_NUMBER = 64
 
 MIN_UTTERANCE_LENGTH = 3
 MAX_UTTERANCE_LENGTH = 30
-
+UTTERANCE_STOP_LIST = ['__content_missing__', '[deleted]']
 logging.basicConfig(format='[%(asctime)s] %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
@@ -35,38 +35,43 @@ def chain_callback(in_params):
     logger.info('Done - {}'.format(input_file))
 
 
-def to_easy_seq2seq(in_params):
+def to_easy_seq2seq_callback(in_params):
     input_file, output_file = in_params
+    enc_filename = output_file + '.enc'
+    dec_filename = output_file + '.dec'
     logger.info('Processing file {}'.format(input_file))
     with getreader('utf-8')(open(input_file)) as reddit_in:
-
-            dialogs = reddit_in.read().split(DIALOGUE_SEPARATOR)
-            for dialog in dialogs:
-                utterances = [
-                    utterance.partition('\t')[2].strip().split()
-                    for utterance in dialog.split('\n')
-                ]
-                utterance_lengths = map(len, utterances)
-                min_length, max_length = (
-                    min(utterance_lengths),
-                    max(utterance_lengths)
-                )
-                if (
-                    MIN_UTTERANCE_LENGTH <= min_length and
-                    max_length <= MAX_UTTERANCE_LENGTH
-                ):
-                    write_easy_seq2seq_format(utterances, output_file)
+        with getwriter('utf-8')(open(enc_filename, 'w')) as encoder_out:
+            with getwriter('utf-8')(open(dec_filename, 'w')) as decoder_out:
+                dialogs = reddit_in.read().split(DIALOGUE_SEPARATOR)
+                for dialog in dialogs:
+                    utterances = [
+                        utterance.partition('\t')[2].strip()
+                        for utterance in dialog.strip().split('\n')
+                    ]
+                    utterances = filter(
+                        lambda utterance: utterance not in UTTERANCE_STOP_LIST,
+                        utterances
+                    )
+                    if not len(utterances):
+                        continue
+                    utterances_tokenized = [
+                        utterance.split()
+                        for utterance in utterances
+                    ]
+                    utterance_lengths = map(len, utterances_tokenized)
+                    min_length, max_length = (
+                        min(utterance_lengths),
+                        max(utterance_lengths)
+                    )
+                    if (
+                        MIN_UTTERANCE_LENGTH <= min_length and
+                        max_length <= MAX_UTTERANCE_LENGTH
+                    ):
+                       for question, answer in zip(utterances, utterances[1:]):
+                           print >>encoder_out, question
+                           print >>decoder_out, answer
     logger.info('Done - {}'.format(input_file))
-
-
-def write_easy_seq2seq_format(in_dialog, in_filename):
-    enc_filename = path.join(in_filename, '.enc')
-    dec_filename = path.join(in_filename, '.dec')
-    with getwriter('utf-8')(open(enc_filename, 'w')) as encoder_out:
-        with getwriter('utf-8')(open(dec_filename, 'w')) as decoder_out:
-            for question, answer in zip(in_dialog, in_dialog[1:]):
-                print >>encoder_out, question
-                print >>decoder_out, answer
 
 
 def collect_tasks(in_src_root, in_dst_root):
