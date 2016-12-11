@@ -6,8 +6,12 @@ from codecs import getreader, getwriter
 from task_list import add_task, execute_tasks, tasks
 from filter_size import getSubreddits
 from extract_conversations import write_comment_chains, build_comment_chains
+from utils import DIALOGUE_SEPARATOR
 
 DEFAULT_TASKS_NUMBER = 64
+
+MIN_UTTERANCE_LENGTH = 3
+MAX_UTTERANCE_LENGTH = 30
 
 logging.basicConfig(format='[%(asctime)s] %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
@@ -29,6 +33,40 @@ def chain_callback(in_params):
             comments_tree_root = build_comment_chains(reddit_in)
             write_comment_chains(comments_tree_root, reddit_out)
     logger.info('Done - {}'.format(input_file))
+
+
+def to_easy_seq2seq(in_params):
+    input_file, output_file = in_params
+    logger.info('Processing file {}'.format(input_file))
+    with getreader('utf-8')(open(input_file)) as reddit_in:
+
+            dialogs = reddit_in.read().split(DIALOGUE_SEPARATOR)
+            for dialog in dialogs:
+                utterances = [
+                    utterance.partition('\t')[2].strip().split()
+                    for utterance in dialog.split('\n')
+                ]
+                utterance_lengths = map(len, utterances)
+                min_length, max_length = (
+                    min(utterance_lengths),
+                    max(utterance_lengths)
+                )
+                if (
+                    MIN_UTTERANCE_LENGTH <= min_length and
+                    max_length <= MAX_UTTERANCE_LENGTH
+                ):
+                    write_easy_seq2seq_format(utterances, output_file)
+    logger.info('Done - {}'.format(input_file))
+
+
+def write_easy_seq2seq_format(in_dialog, in_filename):
+    enc_filename = path.join(in_filename, '.enc')
+    dec_filename = path.join(in_filename, '.dec')
+    with getwriter('utf-8')(open(enc_filename, 'w')) as encoder_out:
+        with getwriter('utf-8')(open(dec_filename, 'w')) as decoder_out:
+            for question, answer in zip(in_dialog, in_dialog[1:]):
+                print >>encoder_out, question
+                print >>decoder_out, answer
 
 
 def collect_tasks(in_src_root, in_dst_root):
@@ -64,4 +102,3 @@ if __name__ == '__main__':
     args = parser.parse_args()
     callback = locals()[args.command + '_callback']
     main(args.src_root, args.result_root, callback, args.jobs)
-
