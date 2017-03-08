@@ -1,5 +1,5 @@
 import json
-from os import path, walk
+from os import path, walk, makedirs
 import logging
 from argparse import ArgumentParser
 from codecs import getreader, getwriter
@@ -35,7 +35,7 @@ def filter_questions(in_src, in_dst):
         body = json_line.get('body', '')
         for sentence in sent_tokenize(body):
             if '?' in sentence and MIN_UTTERANCE_LENGTH <= len(sentence.split()) <= MAX_UTTERANCE_LENGTH:
-                print >>in_dst, sentence
+                print >>in_dst, sentence.encode('utf-8')
 
 
 def filter_callback(in_params):
@@ -45,8 +45,8 @@ def filter_callback(in_params):
         filter_length(reddit_in, reddit_out)
 
 
-def filter_questionscallback(in_params):
-    input_file, output_file, max_len = in_params
+def filter_questions_callback(in_params):
+    input_file, output_file = in_params
     logger.info('Processing file {}'.format(input_file))
     with open(input_file) as reddit_in, open(output_file, 'w') as reddit_out:
         filter_questions(reddit_in, reddit_out)
@@ -121,6 +121,8 @@ def build_argument_parser():
 
 
 def main(in_text_root, in_result_folder, in_callback, in_tasks_number):
+    if not path.exists(in_result_folder):
+        makedirs(in_result_folder)
     collect_tasks(in_text_root, in_result_folder)
     logger.info('got {} tasks'.format(len(tasks)))
     if 1 < in_tasks_number:
@@ -134,3 +136,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     callback = locals()[args.command + '_callback']
     main(args.src_root, args.result_root, callback, args.jobs)
+
