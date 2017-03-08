@@ -1,10 +1,12 @@
+import json
 from os import path, walk
 import logging
 from argparse import ArgumentParser
 from codecs import getreader, getwriter
 
+from nltk.tokenize import sent_tokenize
+
 from task_list import add_task, execute_tasks, tasks
-from filter_size import getSubreddits
 from extract_conversations import write_comment_chains, build_comment_chains
 from utils import DIALOGUE_SEPARATOR
 
@@ -18,11 +20,36 @@ logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
 
 
+def filter_length(input_stream, output_stream):
+    for line in input_stream:
+        json_line = json.loads(line)
+        body = json_line.get('body', '')
+
+        if MIN_UTTERANCE_LENGTH <= len(body.split()) <= MAX_UTTERANCE_LENGTH:
+            print >>output_stream, line.strip()
+
+
+def filter_questions(in_src, in_dst):
+    for line in in_src:
+        json_line = json.loads(line)
+        body = json_line.get('body', '')
+        for sentence in sent_tokenize(body):
+            if '?' in sentence and MIN_UTTERANCE_LENGTH <= len(sentence.split()) <= MAX_UTTERANCE_LENGTH:
+                print >>in_dst, sentence
+
+
 def filter_callback(in_params):
     input_file, output_file, max_len = in_params
     logger.info('Processing file {}'.format(input_file))
     with open(input_file) as reddit_in, open(output_file, 'w') as reddit_out:
-        getSubreddits(reddit_in, reddit_out)
+        filter_length(reddit_in, reddit_out)
+
+
+def filter_questionscallback(in_params):
+    input_file, output_file, max_len = in_params
+    logger.info('Processing file {}'.format(input_file))
+    with open(input_file) as reddit_in, open(output_file, 'w') as reddit_out:
+        filter_questions(reddit_in, reddit_out)
 
 
 def chain_callback(in_params):
