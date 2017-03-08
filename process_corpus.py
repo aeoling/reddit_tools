@@ -1,10 +1,12 @@
 import json
+import re
+import string
 from os import path, walk, makedirs
 import logging
 from argparse import ArgumentParser
 from codecs import getreader, getwriter
 
-from nltk.tokenize import sent_tokenize
+from nltk.tokenize import sent_tokenize, word_tokenize
 
 from task_list import add_task, execute_tasks, tasks
 from extract_conversations import write_comment_chains, build_comment_chains
@@ -33,8 +35,18 @@ def filter_questions(in_src, in_dst):
     for line in in_src:
         json_line = json.loads(line)
         body = json_line.get('body', '')
+        is_question = False
+        only_good_tokens = True
         for sentence in sent_tokenize(body):
-            if '?' in sentence and MIN_UTTERANCE_LENGTH <= len(sentence.split()) <= MAX_UTTERANCE_LENGTH:
+            for token in word_tokenize(sentence):
+                only_good_tokens &= re.match('\w+', token) is not None or token in string.punctuation
+                if '?' in token:
+                    is_question = True
+            if (
+                is_question
+                and only_good_tokens
+                and MIN_UTTERANCE_LENGTH <= len(sentence.split()) <= MAX_UTTERANCE_LENGTH
+            ):
                 print >>in_dst, sentence.encode('utf-8')
 
 
