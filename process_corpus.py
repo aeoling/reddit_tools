@@ -15,7 +15,7 @@ from utils import DIALOGUE_SEPARATOR
 DEFAULT_TASKS_NUMBER = 64
 
 MIN_UTTERANCE_LENGTH = 3
-MAX_UTTERANCE_LENGTH = 30
+MAX_UTTERANCE_LENGTH = 20 
 UTTERANCE_STOP_LIST = ['__content_missing__', '[deleted]']
 logging.basicConfig(format='[%(asctime)s] %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
@@ -35,9 +35,9 @@ def filter_questions(in_src, in_dst):
     for line in in_src:
         json_line = json.loads(line)
         body = json_line.get('body', '')
-        is_question = False
-        only_good_tokens = True
         for sentence in sent_tokenize(body):
+            is_question = False
+            only_good_tokens = True
             for token in word_tokenize(sentence):
                 only_good_tokens &= re.match('\w+', token) is not None or token in string.punctuation
                 if '?' in token:
@@ -47,6 +47,7 @@ def filter_questions(in_src, in_dst):
                 and only_good_tokens
                 and MIN_UTTERANCE_LENGTH <= len(sentence.split()) <= MAX_UTTERANCE_LENGTH
             ):
+                sentence = re.sub('\s+', ' ', sentence)
                 print >>in_dst, sentence.encode('utf-8')
 
 
