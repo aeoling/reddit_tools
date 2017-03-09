@@ -15,11 +15,14 @@ from utils import DIALOGUE_SEPARATOR
 DEFAULT_TASKS_NUMBER = 64
 
 MIN_UTTERANCE_LENGTH = 3
-MAX_UTTERANCE_LENGTH = 20 
+MAX_UTTERANCE_LENGTH = 5 
 UTTERANCE_STOP_LIST = ['__content_missing__', '[deleted]']
 logging.basicConfig(format='[%(asctime)s] %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 logger.setLevel('INFO')
+STOPWORDS_FILE = 'stopwords.txt'
+with open(STOPWORDS_FILE) as stopwords_in:
+    STOPWORDS = [line.strip() for line in stopwords_in if len(line.strip())]
 
 
 def filter_length(input_stream, output_stream):
@@ -40,6 +43,7 @@ def filter_questions(in_src, in_dst):
             only_good_tokens = True
             for token in word_tokenize(sentence):
                 only_good_tokens &= re.match('\w+', token) is not None or token in string.punctuation
+                only_good_tokens &= token.lower() in STOPWORDS
                 if '?' in token:
                     is_question = True
             if (
