@@ -43,7 +43,7 @@ def filter_questions(in_src, in_dst):
             only_good_tokens = True
             for token in word_tokenize(sentence):
                 only_good_tokens &= re.match('\w+', token) is not None or token in string.punctuation
-                only_good_tokens &= token.lower() in STOPWORDS
+                only_good_tokens &= token.lower() not in STOPWORDS
                 if '?' in token:
                     is_question = True
             if (
